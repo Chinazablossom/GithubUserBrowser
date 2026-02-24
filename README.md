@@ -1,5 +1,5 @@
 # GithubUserBrowser
-An  application built that fetches and displays public GitHub users using the GitHub API.
+An application that fetches and displays public GitHub users using the GitHub API.
 
 
 ## Screenshots
@@ -57,6 +57,8 @@ An  application built that fetches and displays public GitHub users using the Gi
 - Search: GitHub search API with offline fallback (filters cached users when offline or rate limited).
 
 ## Key design decisions and trade-offs
+- Used Jetpack Compose because it simplifies UI state handling and integrates cleanly with Kotlin, making the app more maintainable.
+- intentionally kept animations and advanced UI polish minimal to prioritize clarity and maintainability.
 - Navigation3 for a Compose first, type safe, backstack driven API (trade-off: newer API surface).
 - Offline-first: Room caches network responses; UI remains usable offline; search falls back to cached filtering.
 - State management: StateFlow + sealed UI states (loading, success, error, empty, pagination loading).
