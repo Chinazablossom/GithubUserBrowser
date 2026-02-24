@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GitHubUserBrowser</string>
+    <string name="app_name">UserBrowser</string>
 
     <!-- Navigation -->
     <string name="back_button">Back</string>

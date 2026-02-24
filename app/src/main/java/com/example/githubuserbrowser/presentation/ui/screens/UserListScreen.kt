@@ -152,19 +152,6 @@ fun UserListScreen(
                             )
                         )
                     }
-                    IconButton(onClick = { viewModel.clearCache() }) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = stringResource(R.string.clear_cache)
-                        )
-                    }
-
-                    Icon(
-                        imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                        contentDescription = stringResource(
-                            if (isDarkMode) R.string.light_mode else R.string.dark_mode
-                        )
-                    )
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(

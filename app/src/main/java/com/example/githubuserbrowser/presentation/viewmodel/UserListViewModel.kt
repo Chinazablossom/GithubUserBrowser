@@ -3,7 +3,6 @@ package com.example.githubuserbrowser.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.githubuserbrowser.domain.model.User
-import com.example.githubuserbrowser.domain.usecase.ClearCacheUseCase
 import com.example.githubuserbrowser.domain.usecase.GetUsersUseCase
 import com.example.githubuserbrowser.domain.usecase.SearchUsersUseCase
 import com.example.githubuserbrowser.presentation.state.UserListState
@@ -22,7 +21,6 @@ import javax.inject.Inject
 class UserListViewModel @Inject constructor(
     private val getUsersUseCase: GetUsersUseCase,
     private val searchUsersUseCase: SearchUsersUseCase,
-    private val clearCacheUseCase: ClearCacheUseCase
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -150,14 +148,6 @@ class UserListViewModel @Inject constructor(
     }
 
     fun updateSearchQuery(q: String) { _searchQuery.value = q }
-
-    fun clearCache() {
-        viewModelScope.launch {
-            clearCacheUseCase()
-            isInitialLoadDone = false
-            loadUsers(refresh = true)
-        }
-    }
 
     private suspend fun executeSearch(query: String) {
         if (query.isBlank()) {
