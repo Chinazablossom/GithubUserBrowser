@@ -1,0 +1,44 @@
+<resources>
+    <string name="app_name">GitHubUserBrowser</string>
+
+    <!-- Navigation -->
+    <string name="back_button">Back</string>
+    <string name="refresh_button">Refresh</string>
+
+    <!-- Theme -->
+    <string name="dark_mode">Dark Mode</string>
+    <string name="light_mode">Light Mode</string>
+
+    <!-- Search -->
+    <string name="search">Search</string>
+    <string name="search_hint">Search users…</string>
+    <string name="clear_cache">Clear cache</string>
+
+    <!-- User List -->
+    <string name="user_list_title">GitHub Users</string>
+
+    <!-- User Types -->
+    <string name="type_user">User</string>
+    <string name="type_organization">Organization</string>
+
+    <!-- Accessibility -->
+    <string name="user_avatar_description">Avatar for %1$s</string>
+
+    <!-- States -->
+    <string name="error_title">Something went wrong</string>
+    <string name="retry_button">Retry</string>
+    <string name="empty_title">No users found</string>
+    <string name="empty_message">Try refreshing to load users</string>
+    <string name="unknown_error">An unknown error occurred</string>
+
+    <!-- User Detail -->
+    <string name="loading_user_details">Loading user details…</string>
+    <string name="followers_label">Followers</string>
+    <string name="following_label">Following</string>
+    <string name="repositories_label">Repositories</string>
+    <string name="company_label">Company</string>
+    <string name="location_label">Location</string>
+    <string name="blog_label">Blog</string>
+    <string name="email_label">Email</string>
+    <string name="joined_label">Joined</string>
+</resources>
