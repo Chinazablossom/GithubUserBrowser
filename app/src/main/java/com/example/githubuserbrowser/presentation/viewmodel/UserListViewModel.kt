@@ -11,6 +11,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,25 +32,9 @@ class UserListViewModel @Inject constructor(
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // Debounce pagination to prevent duplicate calls
-    private val _paginationRequest = MutableStateFlow<Long?>(null)
-
     private var isInitialLoadDone = false
 
     init {
-        viewModelScope.launch {
-            _paginationRequest
-                .debounce(300)
-                .collect { since ->
-                    since?.let {
-                        loadUsersInternal(it, isLoadMore = it != 0L)
-                    }
-                }
-        }
-
-        // Load initial data
-        loadUsers()
-
         // Search debounce
         viewModelScope.launch {
             _searchQuery
@@ -58,19 +43,68 @@ class UserListViewModel @Inject constructor(
                     if (_isSearching.value) executeSearch(q)
                 }
         }
+
+        // Load initial data
+        loadUsers()
     }
 
 
     fun loadUsers(refresh: Boolean = false) {
         if (refresh) {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
-            requestLoad(0L, isRefresh = true)
+            requestLoad(isRefresh = true)
         } else if (!isInitialLoadDone) {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            requestLoad(0L, isRefresh = false)
+            requestLoad(isRefresh = false)
         }
     }
 
+    private fun requestLoad(isRefresh: Boolean) {
+        viewModelScope.launch {
+            val since = if (isRefresh) 0L else _uiState.value.currentSince
+            val forceRefresh = isRefresh
+
+            getUsersUseCase(
+                since = since,
+                perPage = 30,
+                forceRefresh = forceRefresh
+            ).collectLatest { result ->
+                result
+                    .onSuccess { (users, paginationInfo) ->
+                        _uiState.update { currentState ->
+                            val newUsers = if (since == 0L) {
+                                users // Replace for initial load or refresh
+                            } else {
+                                (currentState.users + users).distinctBy { it.id }
+                            }
+
+                            currentState.copy(
+                                users = newUsers,
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                isEmpty = newUsers.isEmpty(),
+                                currentSince = paginationInfo.currentSince,
+                                hasMore = paginationInfo.hasMore,
+                                error = null
+                            )
+                        }
+                        isInitialLoadDone = true
+                    }
+                    .onFailure { exception ->
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                error = exception.message ?: "An error occurred",
+                                isEmpty = currentState.users.isEmpty()
+                            )
+                        }
+                    }
+            }
+        }
+    }
 
     fun loadMore() {
         val currentState = _uiState.value
@@ -79,64 +113,83 @@ class UserListViewModel @Inject constructor(
         }
 
         _uiState.update { it.copy(isLoadingMore = true) }
-        requestLoad(currentState.currentSince, isLoadMore = true)
-    }
-
-
-    fun retry() {
-        _uiState.update { it.copy(error = null, isLoading = true) }
-        val since = if (_uiState.value.users.isEmpty()) 0L else _uiState.value.currentSince
-        requestLoad(since, isRefresh = false)
-    }
-
-    private fun requestLoad(since: Long, isLoadMore: Boolean = false, isRefresh: Boolean = false) {
-        _paginationRequest.value = since
-    }
-
-    private suspend fun loadUsersInternal(since: Long, isLoadMore: Boolean) {
-        val isRefresh = _uiState.value.isRefreshing
-        val forceRefresh = isRefresh
-
-        getUsersUseCase(
-            since = since,
-            perPage = 30,
-            forceRefresh = forceRefresh
-        ).onSuccess { (users, paginationInfo) ->
-            _uiState.update { currentState ->
-                val newUsers = if (since == 0L) {
-                    users // Replace for initial load or refresh
-                } else {
-                    (currentState.users + users).distinctBy { it.id }
-                }
-
-                currentState.copy(
-                    users = newUsers,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    isRefreshing = false,
-                    isEmpty = newUsers.isEmpty(),
-                    currentSince = paginationInfo.currentSince,
-                    hasMore = paginationInfo.hasMore,
-                    error = null
-                )
-            }
-            isInitialLoadDone = true
-        }.onFailure { exception ->
-            _uiState.update { currentState ->
-                currentState.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
-                    isRefreshing = false,
-                    error = exception.message ?: "An error occurred",
-                    isEmpty = currentState.users.isEmpty()
-                )
+        viewModelScope.launch {
+            getUsersUseCase(
+                since = currentState.currentSince,
+                perPage = 30,
+                forceRefresh = false
+            ).collectLatest { result ->
+                result
+                    .onSuccess { (users, paginationInfo) ->
+                        _uiState.update { state ->
+                            val newUsers = (state.users + users).distinctBy { it.id }
+                            state.copy(
+                                users = newUsers,
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                isEmpty = newUsers.isEmpty(),
+                                currentSince = paginationInfo.currentSince,
+                                hasMore = paginationInfo.hasMore,
+                                error = null
+                            )
+                        }
+                    }
+                    .onFailure { exception ->
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                error = exception.message ?: "An error occurred"
+                            )
+                        }
+                    }
             }
         }
     }
 
-    fun onUserClicked(user: User) {
-        // Navigation handled by UI layer through callback
+    fun retry() {
+        _uiState.update { it.copy(error = null, isLoading = true) }
+        val since = if (_uiState.value.users.isEmpty()) 0L else _uiState.value.currentSince
+        viewModelScope.launch {
+            getUsersUseCase(
+                since = since,
+                perPage = 30,
+                forceRefresh = false
+            ).collectLatest { result ->
+                result
+                    .onSuccess { (users, paginationInfo) ->
+                        _uiState.update { currentState ->
+                            val newUsers = if (since == 0L) users else (currentState.users + users).distinctBy { it.id }
+                            currentState.copy(
+                                users = newUsers,
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                isEmpty = newUsers.isEmpty(),
+                                currentSince = paginationInfo.currentSince,
+                                hasMore = paginationInfo.hasMore,
+                                error = null
+                            )
+                        }
+                        isInitialLoadDone = true
+                    }
+                    .onFailure { exception ->
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                isLoading = false,
+                                isLoadingMore = false,
+                                isRefreshing = false,
+                                error = exception.message ?: "An error occurred",
+                                isEmpty = currentState.users.isEmpty()
+                            )
+                        }
+                    }
+            }
+        }
     }
+
 
     fun enableSearch(enable: Boolean) {
         _isSearching.value = enable

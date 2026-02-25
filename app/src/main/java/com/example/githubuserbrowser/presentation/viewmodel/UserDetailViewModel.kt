@@ -39,24 +39,27 @@ class UserDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             getUserDetailUseCase(username, forceRefresh = refresh)
-                .onSuccess { userDetail ->
-                    _uiState.update {
-                        it.copy(
-                            userDetail = userDetail,
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = null
-                        )
-                    }
-                }
-                .onFailure { exception ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = exception.message ?: "Failed to load user details"
-                        )
-                    }
+                .collect { result ->
+                    result
+                        .onSuccess { userDetail ->
+                            _uiState.update {
+                                it.copy(
+                                    userDetail = userDetail,
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    error = null
+                                )
+                            }
+                        }
+                        .onFailure { exception ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    error = exception.message ?: "Failed to load user details"
+                                )
+                            }
+                        }
                 }
         }
     }

@@ -2,16 +2,17 @@ package com.example.githubuserbrowser.domain.usecase
 
 import com.example.githubuserbrowser.domain.model.UserDetail
 import com.example.githubuserbrowser.domain.repository.UserRepository
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class GetUserDetailUseCase @Inject constructor(
     private val userRepository: UserRepository
 ) {
 
-    suspend operator fun invoke(
+    operator fun invoke(
         username: String,
         forceRefresh: Boolean = false
-    ): Result<UserDetail> {
+    ): Flow<Result<UserDetail>> {
         return userRepository.getUserDetail(username, forceRefresh)
     }
 }
